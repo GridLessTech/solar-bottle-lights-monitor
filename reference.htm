@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Sprinkler Control</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; 
+      padding: 0;
+      display: flex; 
+      flex-direction: column; 
+      align-items: center;
+      background: #f9f9f9; 
+      height: 100vh; 
+    }
+
+    /* Top Connection Banner */
+    .banner {
+      width: 100%;
+      padding: 15px 0;
+      text-align: center;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 20px;
+      transition: background-color 0.3s;
+    }
+    .banner.connected { background-color: #4CAF50; } /* Green */
+    .banner.connecting { background-color: #FF9800; } /* Orange */
+    .banner.disconnected { background-color: #F44336; } /* Red */
+
+    h2 { margin: 10px 0 20px 0; text-align: center; }
+
+    .status {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .status.online { color: green; }
+    .status.offline { color: red; }
+
+    /* NEW: Consolidated Tank Indicator Styles */
+    .tank-indicator {
+      width: 90%;
+      max-width: 300px;
+      height: 50px;
+      line-height: 50px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2em;
+      color: white;
+      margin: 10px 0 30px 0;
+      border-radius: 8px;
+      transition: background-color 0.3s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .tank-indicator.tank-full { background-color: #2196F3; } /* Bright Blue */
+    .tank-indicator.tank-empty { background-color: #F44336; } /* Red */
+    .tank-indicator.tank-unknown { background-color: #9E9E9E; } /* Grey */
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 70px;
+      height: 34px;
+      margin-top: 10px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px; width: 26px;
+      left: 4px; bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #4CAF50; }
+    input:checked + .slider:before { transform: translateX(36px); }
+
+    /* Console Log Styles */
+    .log-container {
+      margin-top: 30px;
+      width: 90%;
+      max-width: 400px;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      background-color: #333;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #555;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="connectionBanner" class="banner disconnected">SYSTEM DISCONNECTED</div>
+
+  <h2>ESP32 Sprinkler</h2>
+
+  <div id="status" class="status offline">Device: Offline</div>
+
+  <div id="tankIndicator" class="tank-indicator tank-unknown">TANK STATUS UNKNOWN</div>
+
+  <label class="switch">
+    <input type="checkbox" id="sprinklerSwitch">
+    <span class="slider"></span>
+  </label>
+  <p>Toggle Sprinkler</p>
+
+  <div class="log-container">
+    <label for="consoleLog"><strong>Connection Log:</strong></label>
+    <textarea id="consoleLog" readonly></textarea>
+  </div>
+
+  <script>
+    const options = {
+      username: 'roche',
+      password: 'roche@54321',
+      reconnectPeriod: 1000,
+      connectTimeout: 30 * 1000,
+    };
+
+    const client = mqtt.connect('wss://mqtt-racknerd.imbento.online:9001', options);
+
+    const statusDiv = document.getElementById('status');
+    const switchInput = document.getElementById('sprinklerSwitch');
+    
+    // Elements
+    const banner = document.getElementById('connectionBanner');
+    const consoleLog = document.getElementById('consoleLog');
+    const tankIndicator = document.getElementById('tankIndicator');
+
+    // MQTT Topics
+    const TOPIC_STATUS = '/esp32/sprinkler/status';
+    const TOPIC_CMD = '/esp32/sprinkler/cmd';
+    const TOPIC_TANK = '/esp32/sprinkler/sensor/tank'; // New Consolidated Topic
+
+    let timeoutTimer = null;
+
+    // Helper to write to log
+    function logMessage(msg) {
+      const timestamp = new Date().toLocaleTimeString();
+      consoleLog.value += `[${timestamp}] ${msg}\n`;
+      consoleLog.scrollTop = consoleLog.scrollHeight; // Auto-scroll to bottom
+    }
+
+    // Helper to update Top Banner
+    function updateBanner(state) {
+      if (state === "connected") {
+        banner.textContent = "MQTT CONNECTED";
+        banner.className = "banner connected";
+      } else if (state === "connecting") {
+        banner.textContent = "CONNECTING...";
+        banner.className = "banner connecting";
+      } else {
+        banner.textContent = "MQTT DISCONNECTED";
+        banner.className = "banner disconnected";
+      }
+    }
+
+    // --- Indicator Update Function ---
+    function updateTankIndicator(val) {
+        if (val === "1") {
+            tankIndicator.textContent = "TANK: FULL";
+            tankIndicator.className = "tank-indicator tank-full";
+        } else if (val === "0") {
+            tankIndicator.textContent = "TANK: EMPTY";
+            tankIndicator.className = "tank-indicator tank-empty";
+        } else {
+            tankIndicator.textContent = "TANK STATUS UNKNOWN";
+            tankIndicator.className = "tank-indicator tank-unknown";
+        }
+    }
+
+    // --- MQTT EVENTS ---
+
+    client.on('connect', function () {
+      logMessage('✅ Connected to MQTT broker');
+      updateBanner("connected");
+      // Subscribe to relevant topics
+      client.subscribe(TOPIC_STATUS);
+      client.subscribe(TOPIC_TANK); // Subscribing to the new consolidated topic
+      logMessage('Subscribed to status and tank topic.');
+    });
+
+    client.on('reconnect', function () {
+      logMessage('⚠️ Reconnecting to broker...');
+      updateBanner("connecting");
+    });
+
+    client.on('close', function () {
+      logMessage('❌ Connection closed');
+      updateBanner("disconnected");
+    });
+
+    client.on('offline', function () {
+      logMessage('🔌 Client offline');
+      updateBanner("disconnected");
+    });
+
+    client.on('message', function (topic, message) {
+      const val = message.toString();
+      logMessage(`📩 Message received on ${topic}: ${val}`);
+
+      if (topic === TOPIC_STATUS) {
+        // Fix for ESP32 sending "online @ HH:MM:SS"
+        if (val.startsWith("online")) { 
+          setOnline(val);
+          resetTimeout();
+        } else {
+          setOffline();
+        }
+      } else if (topic === TOPIC_TANK) {
+        // Update Consolidated Tank Status
+        updateTankIndicator(val);
+      }
+    });
+
+    // Publish when switch changes
+    switchInput.addEventListener('change', function () {
+      const val = switchInput.checked ? "1" : "0";
+      client.publish(TOPIC_CMD, val);
+      logMessage(`🚀 Sent command: ${val}`);
+    });
+
+    client.on('error', function (err) {
+      logMessage(`❌ Error: ${err.message}`);
+    });
+
+    function setOnline(message) {
+      statusDiv.textContent = `Device: Online (${message.substring(9)})`;
+      statusDiv.className = "status online";
+    }
+
+    function setOffline() {
+      statusDiv.textContent = "Device: Offline";
+      statusDiv.className = "status offline";
+    }
+
+    function resetTimeout() {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      timeoutTimer = setTimeout(() => {
+        logMessage("⏳ Device timeout: marking Offline");
+        setOffline();
+      }, 5000); // 5 seconds
+    }
+  </script>
+</body>
+</html>

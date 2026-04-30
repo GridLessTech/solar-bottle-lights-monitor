@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gridless Tech | Monitor</title>
+    <meta name="description" content="Gridless Tech presents IoT-Based Solar Bottle Lights and Energy Consumption Tracking with live relay control and monitoring.">
+    <meta property="og:url" content="https://gridlesstech.imbento.com/">
+    <meta property="og:site_name" content="Gridless Tech">
+    <meta property="og:title" content="Gridless Tech">
+    <meta property="og:description" content="IoT-Based Solar Bottle Lights and Energy Consumption Tracking with live relay control, MQTT connectivity, and real-time monitoring.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://gridlesstech.imbento.com/assets/gridless-tech-og.png">
+    <meta property="og:image:secure_url" content="https://gridlesstech.imbento.com/assets/gridless-tech-og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Gridless Tech">
+    <meta name="twitter:description" content="IoT-Based Solar Bottle Lights and Energy Consumption Tracking with live relay control, MQTT connectivity, and real-time monitoring.">
+    <meta name="twitter:image" content="https://gridlesstech.imbento.com/assets/gridless-tech-og.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <link rel='stylesheet' href='assets/css/style.css'>
+</head>
+<body>
+    <main id="page-shell" class="page-shell">
+        <div id="login-screen" class="w-full max-w-md mx-auto p-8 glass-card rounded-2xl shadow-2xl transition-all duration-500">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-5 brand-mark">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-11 h-11" viewBox="0 0 64 64" fill="none" aria-label="Gridless Tech logo">
+                        <rect x="10" y="12" width="16" height="16" rx="4" fill="#10B981"/>
+                        <rect x="38" y="12" width="16" height="16" rx="4" fill="#34D399" fill-opacity="0.85"/>
+                        <rect x="24" y="36" width="16" height="16" rx="4" fill="#A7F3D0"/>
+                        <path d="M22 20H42" stroke="#E2E8F0" stroke-width="3.5" stroke-linecap="round"/>
+                        <path d="M32 28V36" stroke="#E2E8F0" stroke-width="3.5" stroke-linecap="round"/>
+                        <circle cx="32" cy="32" r="4" fill="#F8FAFC"/>
+                    </svg>
+                </div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-300/80 mb-2 brand-wordmark">Gridless Tech</p>
+                <h1 class="text-2xl font-bold px-4 leading-tight">Gridless Tech</h1>
+                <p class="text-slate-400 text-sm mt-2">IoT-Based Solar Bottle Lights and Energy Consumption Tracking</p>
+                <p class="text-slate-500 text-xs mt-3 font-medium uppercase tracking-widest">Administrator Login</p>
+            </div>
+
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Administrator UID</label>
+                    <input type="text" id="username" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Enter username">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Access Key</label>
+                    <input type="password" id="password" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Password">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-emerald-900/20">
+                    Authorize Access
+                </button>
+                <div id="login-error" class="hidden text-red-400 text-xs text-center font-medium mt-2">
+                    Invalid credentials. Please verify your access key.
+                </div>
+            </form>
+        </div>
+
+        <div id="dashboard" class="hidden w-full max-w-6xl mx-auto animate-in fade-in zoom-in duration-700">
+            <div id="connection-banner" class="mb-4 glass-card rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-slate-700/70">
+                <div>
+                    <p class="text-[10px] uppercase tracking-[0.25em] text-slate-500 font-bold">MQTT Connection</p>
+                    <p id="banner-label" class="text-sm font-semibold text-red-400">Disconnected from host</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs uppercase tracking-wider text-slate-400">
+                    <span class="inline-flex items-center gap-2"><span id="banner-dot" class="status-dot dot-offline"></span> Broker Link</span>
+                    <span id="banner-host" class="font-mono text-slate-300 normal-case tracking-normal">mqtt-racknerd.imbento.online</span>
+                </div>
+            </div>
+
+            <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                <div>
+                    <div class="flex items-center gap-4">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl brand-mark">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 64 64" fill="none" aria-label="Gridless Tech logo">
+                                <rect x="10" y="12" width="16" height="16" rx="4" fill="#10B981"/>
+                                <rect x="38" y="12" width="16" height="16" rx="4" fill="#34D399" fill-opacity="0.85"/>
+                                <rect x="24" y="36" width="16" height="16" rx="4" fill="#A7F3D0"/>
+                                <path d="M22 20H42" stroke="#E2E8F0" stroke-width="3.5" stroke-linecap="round"/>
+                                <path d="M32 28V36" stroke="#E2E8F0" stroke-width="3.5" stroke-linecap="round"/>
+                                <circle cx="32" cy="32" r="4" fill="#F8FAFC"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-300/80 brand-wordmark">Gridless Tech</p>
+                            <h1 class="text-2xl font-bold flex items-center gap-2">
+                                <span class="w-3 h-3 bg-emerald-500 rounded-full status-pulse"></span>
+                                Gridless Tech
+                            </h1>
+                            <p class="text-slate-400 text-sm">IoT-Based Solar Bottle Lights and Energy Consumption Tracking</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-xs text-slate-500 uppercase font-bold">System Time</p>
+                        <p id="clock" class="text-sm font-mono tracking-tighter text-emerald-400">00:00:00</p>
+                    </div>
+                    <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-slate-700">
+                        Exit Admin
+                    </button>
+                </div>
+            </header>
+
+            <div class="mb-4">
+                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Electrical Consumption Metrics</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                    <div class="glass-card meter-card p-4 rounded-2xl border-l-4 border-l-blue-500">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Voltage</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div id="voltage-gauge" class="meter-chart"></div>
+                        <p id="volt-label" class="text-[10px] text-slate-400 mt-2">Waiting for INA219 data</p>
+                    </div>
+
+                    <div class="glass-card meter-card p-4 rounded-2xl border-l-4 border-l-purple-500">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <div id="current-gauge" class="meter-chart"></div>
+                        <p id="current-label" class="text-[10px] text-slate-400 mt-2">Live sensor stream</p>
+                    </div>
+
+                    <div class="glass-card meter-card p-4 rounded-2xl border-l-4 border-l-indigo-500">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Real Power</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div id="power-gauge" class="meter-chart"></div>
+                        <p id="wattage-label" class="text-[10px] text-slate-400 mt-2">Instantaneous load from INA219</p>
+                    </div>
+
+                    <div class="glass-card meter-card p-4 rounded-2xl border-l-4 border-l-yellow-500">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Energy Consumption</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div id="energy-gauge" class="meter-chart"></div>
+                        <p id="mah-label" class="text-[10px] text-slate-400 mt-2">Awaiting power accumulation</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-6">
+                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">System Environment</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="glass-card p-5 rounded-2xl space-y-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">MQTT Host</p>
+                            <div class="flex items-center justify-between gap-3">
+                                <p id="host-status-text" class="text-sm font-semibold text-red-400">Disconnected</p>
+                                <span id="host-status-dot" class="status-dot dot-offline flex-shrink-0"></span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Broker websocket link</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Device Online</p>
+                            <div class="flex items-center justify-between gap-3">
+                                <p id="device-status-text" class="text-sm font-semibold text-red-400">Offline</p>
+                                <span id="device-status-dot" class="status-dot dot-offline flex-shrink-0"></span>
+                            </div>
+                            <p id="device-status-meta" class="text-[10px] text-slate-400 mt-1">Waiting for heartbeat</p>
+                        </div>
+                    </div>
+
+                    <div class="glass-card meter-card p-5 rounded-2xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Load Voltage</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div id="load-gauge" class="meter-chart"></div>
+                        <p id="time-rem-status" class="text-[10px] text-slate-400 mt-2">Bus + shunt calculation</p>
+                    </div>
+
+                    <div class="glass-card meter-card p-5 rounded-2xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Shunt Voltage</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <div id="shunt-gauge" class="meter-chart"></div>
+                        <p id="temp-status" class="text-[10px] text-emerald-400 font-medium mt-2">Live INA219 measurement</p>
+                    </div>
+
+                    <div class="glass-card p-5 rounded-2xl flex flex-col items-center justify-center">
+                        <div class="w-full flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Battery Level</span>
+                            <span id="charge-percent" class="text-emerald-400 font-bold text-sm transition-colors duration-500">--%</span>
+                        </div>
+                        <div class="flex items-center w-full gap-0.5">
+                            <div id="battery-container" class="flex-1 flex gap-1 h-10 bg-slate-900 rounded-lg border border-slate-700 p-1.5 items-center">
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                                <div class="h-full flex-1 rounded-sm bg-slate-800 transition-all duration-500"></div>
+                            </div>
+                            <div class="w-1.5 h-4 bg-slate-700 rounded-r-sm"></div>
+                        </div>
+                        <div class="w-full flex justify-between mt-2 text-[8px] text-slate-500 uppercase font-bold tracking-tighter">
+                            <span>Low</span>
+                            <span>Full</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Control Switch</h2>
+                <div class="control-grid">
+                    <button onclick="toggleLight(1)" id="light-1" class="relay-row rounded-2xl px-4 py-4 transition-all duration-200 flex flex-col items-start gap-4 text-left">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="relay-bulb w-5 h-5 text-slate-500 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            <div>
+                                <p class="text-xs font-bold tracking-[0.18em] text-slate-200 uppercase">Light 01</p>
+                                <p class="light-status text-[10px] text-slate-500 uppercase tracking-[0.18em] mt-1">Off</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between w-full gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Off</span>
+                            <span class="relay-switch"><span class="relay-thumb"></span></span>
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">On</span>
+                        </div>
+                    </button>
+
+                    <button onclick="toggleLight(2)" id="light-2" class="relay-row rounded-2xl px-4 py-4 transition-all duration-200 flex flex-col items-start gap-4 text-left">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="relay-bulb w-5 h-5 text-slate-500 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            <div>
+                                <p class="text-xs font-bold tracking-[0.18em] text-slate-200 uppercase">Light 02</p>
+                                <p class="light-status text-[10px] text-slate-500 uppercase tracking-[0.18em] mt-1">Off</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between w-full gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Off</span>
+                            <span class="relay-switch"><span class="relay-thumb"></span></span>
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">On</span>
+                        </div>
+                    </button>
+
+                    <button onclick="toggleLight(3)" id="light-3" class="relay-row rounded-2xl px-4 py-4 transition-all duration-200 flex flex-col items-start gap-4 text-left">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="relay-bulb w-5 h-5 text-slate-500 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            <div>
+                                <p class="text-xs font-bold tracking-[0.18em] text-slate-200 uppercase">Light 03</p>
+                                <p class="light-status text-[10px] text-slate-500 uppercase tracking-[0.18em] mt-1">Off</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between w-full gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Off</span>
+                            <span class="relay-switch"><span class="relay-thumb"></span></span>
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">On</span>
+                        </div>
+                    </button>
+
+                    <button onclick="toggleLight(4)" id="light-4" class="relay-row rounded-2xl px-4 py-4 transition-all duration-200 flex flex-col items-start gap-4 text-left">
+                        <div class="flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="relay-bulb w-5 h-5 text-slate-500 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            <div>
+                                <p class="text-xs font-bold tracking-[0.18em] text-slate-200 uppercase">Light 04</p>
+                                <p class="light-status text-[10px] text-slate-500 uppercase tracking-[0.18em] mt-1">Off</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between w-full gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Off</span>
+                            <span class="relay-switch"><span class="relay-thumb"></span></span>
+                            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">On</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+                <div class="lg:col-span-2 glass-card rounded-2xl overflow-hidden log-panel">
+                    <div class="p-6 border-b border-slate-700 flex justify-between items-center gap-4">
+                        <h3 class="font-bold text-sm uppercase tracking-widest text-slate-400">Activity Log</h3>
+                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded">LIVE FEED</span>
+                    </div>
+                    <div class="overflow-x-auto log-scroll">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-800/50 text-slate-500 uppercase text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold">Event</th>
+                                    <th class="px-6 py-4 font-semibold">Value</th>
+                                    <th class="px-6 py-4 font-semibold">Timestamp</th>
+                                    <th class="px-6 py-4 font-semibold text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="log-body" class="divide-y divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="glass-card p-6 rounded-2xl console-card">
+                        <h3 class="font-bold text-sm uppercase tracking-widest text-slate-400 mb-4">MQTT Console</h3>
+                        <textarea id="console-log" readonly class="w-full h-40 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-xs text-emerald-300 font-mono resize-none focus:outline-none"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div id="offline-toast" class="status-toast" role="alert" aria-live="assertive">
+        <div class="flex items-start gap-3">
+            <div class="mt-0.5 w-10 h-10 rounded-2xl bg-red-500/12 border border-red-400/20 flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-bold tracking-[0.16em] uppercase text-red-200">Device Offline</p>
+                <p id="offline-toast-message" class="text-sm text-slate-200 mt-1">The relay command cannot be sent because the device is currently offline.</p>
+            </div>
+        </div>
+        </div>
+    <script src="assets/js/app.js"></script>
+</body>
+
+</html>
+
+
