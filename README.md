@@ -1,4 +1,4 @@
-# 🌞 Gridless Tech: Solar Bottle Lights Monitoring System
+#  Gridless Tech: Solar Bottle Lights Monitoring System
 
 An IoT-Based Solar Bottle Lights with Energy Consumption Monitoring using MQTT, INA219 sensor, and a real-time web dashboard for remote control and data visualization.
 
@@ -59,7 +59,7 @@ https://github.com/GridLessTech/solar-bottle-lights-monitor/blob/main/app.js
 ---
 
 ## 👨‍💻 Developers
-- Gridless Tech Team
+- Gridless Tech Team (GROUP 1)
 
 ---
 
